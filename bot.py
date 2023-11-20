@@ -1,65 +1,70 @@
-import telebot
+import logging
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ParseMode
+from aiogram.utils import executor
 from config import TOKEN, ADMINS
-from markups import choose_district, choose_age, send_phone, send_phone_remove
 
-bot = telebot.TeleBot(TOKEN)
+logging.basicConfig(level=logging.INFO)
+
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
 
 info = {}
 
 
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.send_photo(message.from_user.id, open("media/start.jpg", 'rb'), caption=
-    """Международная КиберШкола программирования для детей KiberOne приветствует вас 
-    
+@dp.message_handler(commands=['start'])
+async def start(message: types.Message):
+    photo = open("media/start.jpg", 'rb')
+    caption = """Международная КиберШкола программирования для детей KiberOne приветствует вас 
+
 Мастер-класс проходит по адресу:
 📍Адмиралтейский район, Парфёновская ул., 14, корп. 1 (этаж 1)
-  
+
 ✅ Ваш ребенок создаст свой первый мультфильм и запрограммирует своего героя в игре Майнкрафт 🖥️
 
 ✅ Длительность занятия 120 минут. Всё необходимое предоставим. Ничего брать с собой не нужно.
 
 Чтобы записаться на бесплатный мастер-класс, выберите возраст вашего ребенка👇
-    """, reply_markup=choose_age)
+"""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add("6-9 лет", "9-12 лет", "12-14 лет")
+
+    await bot.send_photo(message.from_user.id, photo, caption=caption, reply_markup=markup)
 
 
+@dp.message_handler(lambda message: message.text in ["6-9 лет", "9-12 лет", "12-14 лет"])
+async def get_district(message: types.Message):
+    info[message.from_user.username] = [message.text]
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(types.KeyboardButton(text="Отправить номер телефона", request_contact=True))
+    await message.answer(
+        "Укажите номер телефона. Наш администратор отправит вам расписание мастер-классов на ближайшую неделю и согласует точное время",
+        reply_markup=markup)
 
 
-@bot.message_handler(content_types=["text"])
-def get_district(message):
-    if message.text in ["6-9 лет", "9-12 лет", "12-14 лет"]:
-        info[message.from_user.username] = [message.text]
-        bot.send_message(message.from_user.id,
-                         """Укажите номер телефона.
-Наш администратор отправит вам расписание мастер-классов на ближайшую неделю и согласует точное время""",
-                         reply_markup=send_phone)
+@dp.message_handler(content_types=['contact'])
+async def contact(message: types.Message):
+    phonenumber = str(message.contact.phone_number)
+    info[message.from_user.username].append(phonenumber)
 
-
-
-
-@bot.message_handler(content_types=['contact'])
-def contact(message):
-    if message.contact is not None:
-        phonenumber = str(message.contact.phone_number)
-        info[message.from_user.username].append(phonenumber)
-
-
-
-        mesg = bot.send_message(message.chat.id, """Спасибо!
+    message_text = """Спасибо!
 
 Скоро наш администратор свяжется с вами и согласует дату и время мастер-класса!
 
-До встречи на уроке! 🤗""",
-                         reply_markup=send_phone_remove())
+До встречи на уроке! 🤗"""
+    markup = types.ReplyKeyboardRemove()
+    await message.answer(message_text, reply_markup=markup)
+
+    await send_lead(message)
 
 
-        send_lead(message)
+async def send_lead(message: types.Message):
+    for admin_id in ADMINS:
+        lead_text = f"Возраст: {info[message.from_user.username][0]}\nТелефон: {info[message.from_user.username][1]}\nUsername: @{message.from_user.username}"
+        await bot.send_message(admin_id, lead_text)
 
 
-def send_lead(message):
-    for id in ADMINS:
-        bot.send_message(id, f"Возраст: {info[message.from_user.username][0]}\nТелефон: {info[message.from_user.username][1]}\n Username: @{message.from_user.username}")
+if __name__ == '__main__':
+    from aiogram import executor
 
-
-
-bot.polling(none_stop=True)
+    executor.start_polling(dp, skip_updates=True)
