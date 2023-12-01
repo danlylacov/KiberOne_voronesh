@@ -53,9 +53,6 @@ class DataBase():
         self._db.commit()
 
 
-db = DataBase()
-db.get_user_ids_and_time()
-
 
 
 
