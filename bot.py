@@ -22,6 +22,21 @@ dp = Dispatcher(bot)
 db = DataBase()
 
 
+async def send_reminder(bot):
+    users = db.get_user_ids_and_time()
+    for user in users:
+        dt_object = datetime.utcfromtimestamp(user[1])
+        if (dt_object + timedelta(days=1) < datetime.now()):
+
+            db.update_time(user[0])
+            await bot.send_message(int(user[0]), "❗❗❗Напоминаем❗❗❗\nВы не поностью оставили заявку!")
+
+
+scheduler = AsyncIOScheduler(timezone='Europe/Moscow')
+scheduler.add_job(send_reminder, trigger='interval', seconds=60 * 60, kwargs={'bot': bot})
+scheduler.start()
+
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     if message.from_user.first_name:
@@ -81,14 +96,7 @@ async def send_lead(message: types.Message):
     await bot.send_message(-1002072461379, lead_text)
 
 
-async def send_reminder(bot):
-    users = db.get_user_ids_and_time()
-    for user in users:
-        dt_object = datetime.utcfromtimestamp(user[1])
-        if (dt_object + timedelta(days=1) < datetime.now()):
 
-            db.update_time(user[0])
-            await bot.send_message(int(user[0]), "❗❗❗Напоминаем❗❗❗\nВы не поностью оставили заявку!")
 
 
 
@@ -100,9 +108,7 @@ if __name__ == '__main__':
 
     while True:
         try:
-            scheduler = AsyncIOScheduler(timezone='Europe/Moscow')
-            scheduler.add_job(send_reminder, trigger='interval', seconds=60 * 60, kwargs={'bot': bot})
-            scheduler.start()
+
             print('sheduler started!')
             print('Bot id running...')
             executor.start_polling(dp, skip_updates=True)
