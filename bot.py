@@ -67,15 +67,27 @@ async def start(message: types.Message):
     await bot.send_photo(message.from_user.id, photo, caption=caption, reply_markup=markup)
 
 
-@dp.message_handler(lambda message: message.text in ["6-9 лет", "9-12 лет", "12-14 лет"])
+@dp.message_handler(lambda message: message.text)
 async def get_age(message: types.Message):
-    db.add_age(message.text, message.from_user.id)
+    if message.text in ["6-9 лет", "9-12 лет", "12-14 лет"]:
+        db.add_age(message.text, message.from_user.id)
 
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(types.KeyboardButton(text="Отправить номер телефона", request_contact=True))
-    await message.answer(
-        "Укажите номер телефона. Наш администратор отправит вам расписание мастер-классов на ближайшую неделю и согласует точное время",
-        reply_markup=markup)
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        markup.add(types.KeyboardButton(text="Отправить номер телефона", request_contact=True))
+        await message.answer(
+            """Укажите номер телефона без "+" или нажмите на кнопку "отправить номер телефона". Наш администратор отправит вам расписание мастер-классов на ближайшую неделю и согласует точное время""",
+            reply_markup=markup)
+    else:
+        db.add_phone(message.text, message.from_user.id)
+
+        message_text = """Спасибо!
+
+Скоро наш администратор свяжется с вами и согласует дату и время мастер-класса!
+
+До встречи! 🤗"""
+        markup = types.ReplyKeyboardRemove()
+        await message.answer(message_text, reply_markup=markup)
+        await send_lead(message)
 
 
 @dp.message_handler(content_types=['contact'])
