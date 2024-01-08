@@ -96,7 +96,7 @@ async def send_lead(message: types.Message):
     user_data = db.get_user(message.from_user.id)
     lead_text = f"Имя: {user_data['name']}\nВозраст: {user_data['age']}\nТелефон: +{user_data['phone']}\nUsername: @{user_data['username']}"
     db.delete_user(message.from_user.id)
-    await bot.send_message(-4079174104, lead_text)
+    await bot.send_message(-1002127527656, lead_text)
 
 
 
